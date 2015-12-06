@@ -1,0 +1,23 @@
+<RCC> 
+    <qresource prefix="/plugins/trackgps" > 
+        <file>Satellite-22.png</file> 
+        <file>options.png</file> 
+        <file>images/help-browser.png</file> 
+    </qresource> 
+    <qresource>
+        <file>images/GPSTrackerOperation.png</file>
+        <file>images/StartButton.png</file>
+        <file>images/StopButton.png</file>
+        <file>images/Connecting.png</file>
+        <file>images/ConnectionInfo.png</file>
+        <file>images/ConnectionFailed.png</file>
+        <file>images/StartNewTrack.png</file>
+        <file>images/EraseTracks.png</file>
+        <file>images/GPSTrackerOptions.png</file>
+        <file>images/SaveSHAPEFile1.png</file>
+        <file>images/SaveSHAPEFile3.png</file>
+    </qresource>
+    <qresource>
+        <file alias="TheQGISGPSTrackerPlugin.html">TheQGISGPSTrackerPlugin.html</file>
+    </qresource>
+</RCC> 

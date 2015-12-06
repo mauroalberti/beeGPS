@@ -1,0 +1,24 @@
+[general]
+name=beeGPS
+description=GPS
+category=Plugins
+version=version 2.0.1
+experimental=False
+qgisMinimumVersion=2.0
+author=ManyAuthors
+email=alberti.m65@gmail.com
+icon=Satellite-32.png
+
+; start of optional metadata
+changelog=
+  2.0.1: adaptation to QGIS 2.x
+    
+; tags are in comma separated value format, spaces are allowed
+tags=raster, dem, intersection, structural geology, geological planes
+
+homepage=https://github.com/mauroalberti/beeGPS
+tracker=https://github.com/mauroalberti/beeGPS
+repository=https://github.com/mauroalberti/beeGPS
+
+; deprecated flag (applies to the whole plugin and not only to the uploaded version)
+deprecated=False
