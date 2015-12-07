@@ -15,22 +15,16 @@ on Windows. I try to make notes where major changes occur.
 
 
 import os, sys, math
+from time import *
 
-
-
-# Import the Qt and QGIS libraries
 from PyQt4.QtCore import * 
 from PyQt4.QtGui import *
 from PyQt4 import uic
 from qgis.core import *
 from qgis.gui import *
-from time import *
 
 from CanvasMarkers import PositionMarker
-
-
 from gpsconnection import *
-
 from gpstrackeroptions import GPSTrackerOptions
 from shapefilenames import ShapeFileNames
 from helpform import *
@@ -38,9 +32,9 @@ from helpform import *
 
 
 class ReadGpsd (QThread):
-
-    #Thread that connects to GPSConnection and send read lat/lon to plugin interface
-    def __init__ (self,parent=None, session=None):
+    """Thread that connects to GPSConnection and send read lat/lon to plugin interface"""
+    
+    def __init__ (self, parent=None, session=None):
         
         super(ReadGpsd,self).__init__(parent)
         self.session = GPSConnection()
@@ -66,28 +60,30 @@ class ReadGpsd (QThread):
                 self.emit(SIGNAL("connectionMade()"))
             else: # not yet connected: find port and open it
                 if self.tryAllPorts: 
-                    self.session.connectPort()
+                    self.session.search_available_port()
                 else: 
-                    self.session.connectPortBySettings(self.portNumber,self.portSpeed )
+                    self.session.connectPortBySettings(self.portNumber, self.portSpeed )
                 self.emit(SIGNAL("connectionMade()"))
-        except NoGPSConnected, e: # method connectPort will issue this message if no NMEA GPS port is found
+        except NoGPSConnected, e: # method search_available_port will issue this message if no NMEA GPS port is found
             self.emit(SIGNAL("connectionFailed(PyQt_PyObject)"),e)
             self.exit(1)
-        else:
-            # gather data from gpsd
-            #QMessageBox.information(self.parent.mainWindow(),"ReadGpsd","Reached else part of run method!",QMessageBox.Ok)
-            try:
-                self.running = True
-                while self.running and self.session.connected :
-                    #~ msg = "lat:%s\nlon:%s" % (self.session.fix.latitude,self.session.fix.longitude)
-                    #~ QMessageBox.information(self.iface.mainWindow(), "trackGps", msg)
-                    #~ print msg
-                    gpsPosition = self.session.getPosition()
-                    if gpsPosition.hasFix: 
-                        self.emit(SIGNAL("readCoords(PyQt_PyObject)"),gpsPosition)
-            except NoGPSConnected, e: # method connectPort will issue this message if no NMEA GPS port is found
-                self.emit(SIGNAL("connectionFailed(PyQt_PyObject)"),e)
-                self.exit(1)
+
+        # gather data from gpsd
+        #QMessageBox.information(self.parent.mainWindow(),"ReadGpsd","Reached else part of run method!",QMessageBox.Ok)
+        try:
+            self.running = True
+            while self.running and self.session.connected :
+                #~ msg = "lat:%s\nlon:%s" % (self.session.fix.latitude,self.session.fix.longitude)
+                #~ QMessageBox.information(self.iface.mainWindow(), "trackGps", msg)
+                #~ print msg
+                gpsPosition = self.session.getPosition()
+                if gpsPosition.hasFix: 
+                    self.emit(SIGNAL("readCoords(PyQt_PyObject)"),gpsPosition)
+        except NoGPSConnected, e: # method search_available_port will issue this message if no NMEA GPS port is found
+            self.emit(SIGNAL("connectionFailed(PyQt_PyObject)"),e)
+            self.exit(1)
+            
+            
         self.quit()
     
     
@@ -116,7 +112,6 @@ class trackGps:
         self.dock = uic.loadUi(os.path.join(self.globalpath,"DockWidget.ui"))
         self.canvas = self.iface.mapCanvas()
 
-     
         # Default options
         self.GPSSettings = QSettings()
 
@@ -200,6 +195,7 @@ class trackGps:
         self.actionStop.setWhatsThis("Close the GPS Connection and Stop Tracking")
         self.actionOptions  = QAction(QIcon(":/plugins/trackgps/options.png"),"Set GPS Tracking Options", self.iface.mainWindow())
         self.actionOptions.setWhatsThis("Set the various GPS Connection/Tracking Options")
+        
         # add help menu item
         self.helpAction = QAction(QIcon(":/plugins/trackgps/images/help-browser.png"), "GPS Tracking Help", self.iface.mainWindow())
      
@@ -225,7 +221,6 @@ class trackGps:
         QObject.connect(myPluginMenu, SIGNAL("aboutToShow()"), self.updateTrackGPSMenu)
      
         self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
-
 
 
     def helpWindow(self):
@@ -300,6 +295,7 @@ class trackGps:
         self.dock.lon.setText(str(aGPSPosition.longitude) + ' ' + aGPSPosition.longitudeEW)
         self.dock.lineBearing.setText("%5.1i"%aGPSPosition.bearing)
         self.dock.lineSpeed.setText("%5.1i"%aGPSPosition.speed)
+        
         # display arrow on the map
         latitude = aGPSPosition.latitude if aGPSPosition.latitudeNS == 'N' else aGPSPosition.latitude * -1.0
         longitude = aGPSPosition.longitude if aGPSPosition.longitudeEW == 'E' else aGPSPosition.longitude * -1.0
@@ -308,12 +304,14 @@ class trackGps:
         self.positionMarker.setHasPosition(True)
         self.positionMarker.newCoords(p,aGPSPosition.bearing)
         
-        # move map to keep marker at center
-        curext = self.canvas.extent()
-        p1 = QgsPoint(p.x() - curext.width()/2, p.y() - curext.height()/2)
-        p2 = QgsPoint(p.x() + curext.width()/2, p.y() + curext.height()/2)
-        self.canvas.setExtent(QgsRectangle (p1,p2))
-        self.canvas.refresh()
+        doRefresh = False
+        if doRefresh:
+            # move map to keep marker at center
+            curext = self.canvas.extent()
+            p1 = QgsPoint(p.x() - curext.width()/2, p.y() - curext.height()/2)
+            p2 = QgsPoint(p.x() + curext.width()/2, p.y() + curext.height()/2)
+            self.canvas.setExtent(QgsRectangle (p1,p2))
+            self.canvas.refresh()
     
     
     def stopGather(self):
@@ -377,7 +375,7 @@ class trackGps:
         self.searchAllConnectionsSpeeds = False
         
         
-    def connectionFailed(self,msg):
+    def connectionFailed(self, msg):
         
         QMessageBox.warning(self.iface.mainWindow(),"trackGps", "Connection to GPSConnection failed\n%s"%(msg),QMessageBox.Ok,0)
         if self.read.session.connected: 
@@ -505,7 +503,7 @@ class trackGps:
                     del linesFile # del file object to force a flush and close
                     
 
-    def createSHAPEfile(self,fileName,fileFields,fileType,crs):
+    def createSHAPEfile(self,fileName, fileFields, fileType, crs):
         '''
         this function creates a new, empty shape file for use in writing points or lines
         Returns: SHAPEfile, status

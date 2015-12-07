@@ -14,7 +14,9 @@ def qgisMinimumVersion():
     return "2.0"
 
 def authorName():
-    return "JJL <Buggerone@gmail.com> & Bob Bruce<Bob.Bruce@pobox.com>"
+    return "JJL <Buggerone@gmail.com> & \
+            Bob Bruce<Bob.Bruce@pobox.com> & \
+            Mauro Alberti <alberti.m65@gmail.com>"
 
 def classFactory(iface):
     return trackGps(iface)

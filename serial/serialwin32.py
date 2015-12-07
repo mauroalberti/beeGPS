@@ -17,9 +17,12 @@ MS_DSR_ON  = 32
 MS_RING_ON = 64
 MS_RLSD_ON = 128
 
+
 def device(portnum):
     """Turn a port number into a device name"""
+    
     return 'COM%d' % (portnum+1) #numbers are transformed to a string
+
 
 class Serial(SerialBase):
     """Serial port implemenation for Win32. This implemenatation requires a 
@@ -31,6 +34,7 @@ class Serial(SerialBase):
     def open(self):
         """Open port with current settings. This may throw a SerialException
            if the port cannot be opened."""
+           
         if self._port is None:
             raise SerialException("Port must be configured before it can be used.")
         self.hComPort = None
@@ -74,9 +78,11 @@ class Serial(SerialBase):
         #~ self._overlappedWrite.hEvent = win32event.CreateEvent(None, 1, 0, None)
         self._overlappedWrite.hEvent = win32event.CreateEvent(None, 0, 0, None)
         self._isOpen = True
+        
 
     def _reconfigurePort(self):
         """Set communication parameters on opened port."""
+        
         if not self.hComPort:
             raise SerialException("Can only operate on a valid port handle")
         
@@ -170,11 +176,14 @@ class Serial(SerialBase):
         except win32file.error, e:
             raise ValueError("Cannot configure port, some setting was wrong. Original message: %s" % e)
 
+
     #~ def __del__(self):
         #~ self.close()
 
+
     def close(self):
         """Close port"""
+        
         if self._isOpen:
             if self.hComPort:
                 try:
@@ -190,20 +199,26 @@ class Serial(SerialBase):
                 self.hComPort = None
             self._isOpen = False
 
+
     def makeDeviceName(self, port):
         return device(port)
 
+
     #  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+    
     
     def inWaiting(self):
         """Return the number of characters currently in the input buffer."""
+        
         flags, comstat = win32file.ClearCommError(self.hComPort)
         return comstat.cbInQue
+
 
     def read(self, size=1):
         """Read size bytes from the serial port. If a timeout is set it may
            return less characters as requested. With no timeout it will block
            until the requested number of bytes is read."""
+           
         if not self.hComPort: raise portNotOpenError
         if size > 0:
             win32event.ResetEvent(self._overlappedRead.hEvent)
@@ -226,6 +241,7 @@ class Serial(SerialBase):
 
     def write(self, data):
         """Output the given string over the serial port."""
+        
         if not self.hComPort: raise portNotOpenError
         if not isinstance(data, str):
             raise TypeError('expected str, got %s' % type(data))
@@ -243,30 +259,38 @@ class Serial(SerialBase):
 
     def flushInput(self):
         """Clear input buffer, discarding all that is in the buffer."""
+        
         if not self.hComPort: raise portNotOpenError
         win32file.PurgeComm(self.hComPort, win32file.PURGE_RXCLEAR | win32file.PURGE_RXABORT)
+
 
     def flushOutput(self):
         """Clear output buffer, aborting the current output and
         discarding all that is in the buffer."""
+        
         if not self.hComPort: raise portNotOpenError
         win32file.PurgeComm(self.hComPort, win32file.PURGE_TXCLEAR | win32file.PURGE_TXABORT)
 
+
     def sendBreak(self, duration=0.25):
         """Send break condition. Timed, returns to idle state after given duration."""
+        
         if not self.hComPort: raise portNotOpenError
         import time
         win32file.SetCommBreak(self.hComPort)
         time.sleep(duration)
         win32file.ClearCommBreak(self.hComPort)
 
+
     def setBreak(self, level=1):
         """Set break: Controls TXD. When active, to transmitting is possible."""
+        
         if not self.hComPort: raise portNotOpenError
         if level:
             win32file.SetCommBreak(self.hComPort)
         else:
             win32file.ClearCommBreak(self.hComPort)
+
 
     def setRTS(self, level=1):
         """Set terminal status line: Request To Send"""
@@ -278,8 +302,10 @@ class Serial(SerialBase):
             self._rtsState = win32file.RTS_CONTROL_DISABLE
             win32file.EscapeCommFunction(self.hComPort, win32file.CLRRTS)
 
+
     def setDTR(self, level=1):
         """Set terminal status line: Data Terminal Ready"""
+        
         if not self.hComPort: raise portNotOpenError
         if level:
             self._dtrState = win32file.DTR_CONTROL_ENABLE
@@ -288,44 +314,56 @@ class Serial(SerialBase):
             self._dtrState = win32file.DTR_CONTROL_DISABLE
             win32file.EscapeCommFunction(self.hComPort, win32file.CLRDTR)
 
+
     def getCTS(self):
         """Read terminal status line: Clear To Send"""
+        
         if not self.hComPort: raise portNotOpenError
         return MS_CTS_ON & win32file.GetCommModemStatus(self.hComPort) != 0
 
+
     def getDSR(self):
         """Read terminal status line: Data Set Ready"""
+        
         if not self.hComPort: raise portNotOpenError
         return MS_DSR_ON & win32file.GetCommModemStatus(self.hComPort) != 0
 
+
     def getRI(self):
         """Read terminal status line: Ring Indicator"""
+        
         if not self.hComPort: raise portNotOpenError
         return MS_RING_ON & win32file.GetCommModemStatus(self.hComPort) != 0
 
+
     def getCD(self):
         """Read terminal status line: Carrier Detect"""
+        
         if not self.hComPort: raise portNotOpenError
         return MS_RLSD_ON & win32file.GetCommModemStatus(self.hComPort) != 0
+
 
     # - - platform specific - - - -
 
     def setXON(self, level=True):
         """Platform specific - set flow state."""
+        
         if not self.hComPort: raise portNotOpenError
         if level:
             win32file.EscapeCommFunction(self.hComPort, win32file.SETXON)
         else:
             win32file.EscapeCommFunction(self.hComPort, win32file.SETXOFF)
 
+
+
 #Nur Testfunktion!!
 if __name__ == '__main__':
+    
     s = Serial(0)
     print s
     
     s = Serial()
-    print s
-    
+    print s    
     
     s.baudrate = 19200
     s.databits = 7

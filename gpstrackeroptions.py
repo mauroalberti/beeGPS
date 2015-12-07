@@ -1,30 +1,36 @@
-# Import the Qt and QGIS libraries
+
+import os
+import sys
+import math
+
+
 from PyQt4.QtCore import * 
 from PyQt4.QtGui import *
 from PyQt4 import uic
-import os,sys,math
 
 
-if sys.version_info[:2] < (2, 5):
-    def partial(func, arg):
-        def callme():
-            return func(arg)
-        return callme
-else:
-    from functools import partial
+from functools import partial
 
-# gpsTrackingOptionsDlg = uic.loadUi(os.path.join(self.globalpath,"gpsTrackerOptions.ui"))
+
 globalpath = os.path.dirname(os.path.abspath(__file__))
 gpsTrackingOptionsDlg, base_class = uic.loadUiType(os.path.join(globalpath,"gpsTrackerOptions.ui"))
 
+
+
 class GPSTrackerOptions(QDialog, gpsTrackingOptionsDlg):
-    
+    """
+    Class to set up the dialog for all of the tracker options. Parameter trackerObject is used to pass the current options
+    """
+        
+            
     def __init__(self, trackerObject, parent=None):
+        
         super(GPSTrackerOptions, self).__init__(parent)
+
+        self.port_minval = 10       
+        self.port_maxval = 18
+        
         self.setupUi(self)
-        """
-        Class to set up the dialog for all of the tracker options. Parameter trackerObject is used to pass the current options
-        """
 
         self.trackerObject = trackerObject # save this for use in the methods
 
@@ -33,8 +39,8 @@ class GPSTrackerOptions(QDialog, gpsTrackingOptionsDlg):
             self.cbxPortSpeed.addItem(str(self.trackerObject.read.session.baudRates[i]), i)
 
         # Load the ports selection box
-        for i in range(11,18):
-            pName = 'COM' + str(i+1)
+        for i in range(self.port_minval, self.port_maxval+1):
+            pName = 'COM' + str(i)
             self.cbxPortName.addItem(pName, i)
             
         # Set the port ID and speeds according to the defaults or recovered values
@@ -49,25 +55,30 @@ class GPSTrackerOptions(QDialog, gpsTrackingOptionsDlg):
             self.cbxPortName.setCurrentIndex(self.trackerObject.serialPortNumber)
             self.cbxPortSpeed.setCurrentIndex(self.trackerObject.serialPortSpeed)
         
+        
         # Set Initial GPS Display Options
+        
         # Marker Fill color
         pal = self.btnMarkerFillColor.palette()
         pal.setColor(QPalette.Active, QPalette.Button, self.trackerObject.markerFillColor)
         pal.setColor(QPalette.Active, QPalette.Window, self.trackerObject.markerFillColor)
         self.btnMarkerFillColor.setPalette(pal)
         self.markerFillColor = self.trackerObject.markerFillColor
+        
         # Marker Outline color
         pal = self.btnMarkerOutlineColor.palette()
         pal.setColor(QPalette.Active, QPalette.Button, self.trackerObject.markerOutlineColor)
         pal.setColor(QPalette.Active, QPalette.Window, self.trackerObject.markerOutlineColor)
         self.btnMarkerOutlineColor.setPalette(pal)
         self.markerOutlineColor = self.trackerObject.markerOutlineColor
+        
         # GPS Track Line color 
         pal = self.btnTrackLineColor.palette()
         pal.setColor(QPalette.Active, QPalette.Button, self.trackerObject.lineColor)
         pal.setColor(QPalette.Active, QPalette.Window, self.trackerObject.lineColor)
         self.btnTrackLineColor.setPalette(pal)
         self.lineColor = self.trackerObject.lineColor
+        
         # GPS Track Line Width
         self.sbxTrackWidth.setValue(self.trackerObject.trackLineWidth)
         self.cbxSaveGPSTrack.setChecked(self.trackerObject.saveInSHAPEFile)
@@ -92,6 +103,7 @@ class GPSTrackerOptions(QDialog, gpsTrackingOptionsDlg):
         QObject.connect(self.rbtSetConnection, SIGNAL("clicked()"), self.setConnectionSettings)
         QObject.connect(self.cbxPortSpeed, SIGNAL("currentIndexChanged(int)"), self.getComboBoxChange)
 
+
     def colorClicked(self):
         btnColor = self.sender().palette().color(QPalette.Active, QPalette.Window)
         newColor = QColorDialog.getColor(btnColor)
@@ -109,9 +121,11 @@ class GPSTrackerOptions(QDialog, gpsTrackingOptionsDlg):
             elif self.sender() == self.btnMarkerOutlineColor:
                 self.markerOutlineColor = newColor
 
+
     def setConnectionSettings(self):
         """The Connection Selection has changed, detect it and if the user is selecting a particular
            connection set, enable the controls"""
+           
         if self.rbtTryAll.isChecked(): # user has elected to search all connections and speeds
             self.trackerObject.searchAllConnectionsSpeeds = True
             self.cbxPortName.setDisabled(True)
@@ -123,8 +137,12 @@ class GPSTrackerOptions(QDialog, gpsTrackingOptionsDlg):
             self.cbxPortName.setCurrentIndex(self.trackerObject.serialPortNumber)
             self.cbxPortSpeed.setCurrentIndex(self.trackerObject.serialPortSpeed)
 
+
     def getComboBoxChange(self,theIndex):
+        
         if self.sender() == self.cbxPortSpeed:
             self.trackerObject.serialPortSpeed = theIndex
         else:
             self.trackerObject.serialPortNumber = theIndex
+            
+            

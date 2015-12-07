@@ -27,15 +27,18 @@ except:
     True = 1
     False = not True
 
+
 class SerialException(Exception):
     """Base class for serial port related exceptions."""
 
 portNotOpenError = SerialException('Port not open')
 
+
 class SerialTimeoutException(SerialException):
     """Write timeouts give an exception"""
 
 writeTimeoutError = SerialTimeoutException("Write timeout")
+
 
 class FileLike(object):
     """An abstract file like class.
@@ -51,8 +54,15 @@ class FileLike(object):
     refuses to work (it raises an exception in this case)!
     """
 
-    def read(self, size): raise NotImplementedError
-    def write(self, s): raise NotImplementedError
+    def read(self, size): 
+        
+        raise NotImplementedError
+    
+    
+    def write(self, s): 
+        
+        raise NotImplementedError
+    
 
     def readline(self, size=None, eol='\n'):
         """read a line which is terminated with end-of-line (eol) character
@@ -69,11 +79,14 @@ class FileLike(object):
                     break
             else:
                 break
+            
         return line
+    
 
     def readlines(self, sizehint=None, eol='\n'):
         """read a list of lines, until timeout
         sizehint is ignored"""
+        
         if self.timeout is None:
             raise ValueError, "Serial port MUST have enabled timeout for this function!"
         lines = []
@@ -85,28 +98,41 @@ class FileLike(object):
                     break
             else:
                 break
+            
         return lines
+    
 
     def xreadlines(self, sizehint=None):
         """just call readlines - here for compatibility"""
+        
         return self.readlines()
+    
 
     def writelines(self, sequence):
+        
         for line in sequence:
             self.write(line)
 
+
     def flush(self):
         """flush of file like objects"""
+        
         pass
+
 
     # iterator for e.g. "for line in Serial(0): ..." usage
     def next(self):
+        
         line = self.readline()
-        if not line: raise StopIteration
+        if not line: 
+            raise StopIteration
+        
         return line
+
 
     def __iter__(self):
         return self
+
 
 
 class SerialBase(FileLike):
@@ -391,7 +417,10 @@ class SerialBase(FileLike):
             self.dsrdtr,
         )
 
+
+
 if __name__ == '__main__':
+    
     s = SerialBase()
     print s.portstr
     print s.getSupportedBaudrates()

@@ -1,8 +1,10 @@
 #!/usr/bin/env python
+
 """ GPS Receiver connection class - (C)2009 - Bob Bruce - Bob.Bruce@pobox.com
                                               www.hwps.ca
     see class documentation below.
 """
+
 
 import time
 import serial
@@ -18,6 +20,7 @@ class NoGPSConnected(Exception):
     def __str__(self):
         
         return self.value
+    
     
 
 class GPSPosition(object):
@@ -52,6 +55,7 @@ class GPSPosition(object):
         self.satelliteData = [] # this will be converted to a list of tuples
         self.hdop = 0.0 # accuracy isn't always provided in the message - this is default
         self.hasFix = False
+
 
 
 class GPSConnection(object):
@@ -89,8 +93,7 @@ class GPSConnection(object):
                   form: dd.ddddddd,A,ddd.ddddddd,A where the characters will be
                   N or S and E or W respectively
     getVelocity = returns the velocity in km/hr
-    getBearing = returns the bearing 
-    
+    getBearing = returns the bearing     
     """
     
     def __init__(self):
@@ -107,9 +110,13 @@ class GPSConnection(object):
         self.datumEPSG = 4326
         
         self.baudRates = [1200, 2400, 4800, 9600, 14400, 28800, 36400, 56700]
+
+        self.port = 0
+        self.portName = ''
+        self.port_maxval = 18
+                
         
-        
-    def connectPort(self):
+    def search_available_port(self):
         """
         Method cycles through port numbers from 0 to 18 and baud rates shown below to attempt
         a connection. If a connection to a serial port was made then self.connected is set to
@@ -121,14 +128,11 @@ class GPSConnection(object):
             self.serialPort = the serial.Serial object that is the connected port
             self.portName = the name of the connected serial port (i.e. COM1)            
         """
-        
-        self.port = 0
-        self.portName = ''
-        self.port_maxval = 18
+    
 
         while(not self.connected and self.port < self.port_maxval):
             for self.baudRate in self.baudRates:
-                self.tryConnectPortSpeed(self.port,self.baudRate)
+                self.try_connect_port_with_speed(self.port,self.baudRate)
                 if self.connected: # are connected, stop trying baud rates to connect on
                     print 'Got GPS on port ' + str(self.port) + ' ' + self.serialPort.portstr
                     break
@@ -167,14 +171,15 @@ class GPSConnection(object):
         self.portName = ''
         self.baudRate = self.baudRates[portSpeed]
 
-        self.tryConnectPortSpeed(self.port,self.baudRate)
+        self.try_connect_port_with_speed(self.port, self.baudRate)
         if self.connected: 
             self.portName = self.serialPort.portstr
         else: 
             raise NoGPSConnected("Could not find a GPS Serial Connection sending NMEA messages on port: COM" +
                                    str(self.port+1) + " at speed " + str(self.baudRate) + "!")
         
-    def tryConnectPortSpeed(self,port,baudRate):
+        
+    def try_connect_port_with_speed(self, port, baudRate):
         """
         Method uses input port number and baud rate to attempt a connection. If a connection
         to a serial port was made then self.connected is set to True otherwise it is false.
