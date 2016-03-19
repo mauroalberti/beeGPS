@@ -84,22 +84,22 @@ class PositionMarker(QgsMapCanvasItem):
         
         #~ print pos
         if self.pos != pos:
-            save = self.pos
-            self.pos = QgsPoint(pos) # copy
-            if save and cap == 0:
-                # compute angle from positions
-                # this is a small distance, simply use pythagore
-                if (pos.x()-save.x()) == 0:
-                    self.angle = 90
-                else:
-                    self.angle = 90 - degrees(atan((pos.y()-save.y()) / (pos.x()-save.x()) ))
-                if (save.x() > pos.x()): # go west !
-                    self.angle = 360 - self.angle
-                #print self.angle
-            else:
-                self.angle = cap
-                
-            self.updatePosition()
+          save = self.pos
+          self.pos = QgsPoint(pos) # copy
+          if save and cap == 0:
+              # compute angle from positions
+              # this is a small distance, simply use pythagore
+              if (pos.x()-save.x()) == 0:
+                  self.angle = 90
+              else:
+                  self.angle = 90 - degrees(atan((pos.y()-save.y()) / (pos.x()-save.x()) ))
+              if (save.x() > pos.x()): # go west !
+                  self.angle = 360 - self.angle
+              #print self.angle
+          else:
+              self.angle = cap
+              
+          self.updatePosition()
 
 
     def setHasPosition(self, has):

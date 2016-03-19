@@ -14,8 +14,11 @@ on Windows. I try to make notes where major changes occur.
 """
 
 
-import os, sys, math
+import os, sys
 from time import *
+import datetime
+import math
+from decimal import Decimal
 
 from PyQt4.QtCore import * 
 from PyQt4.QtGui import *
@@ -214,9 +217,9 @@ class trackGps:
         QObject.connect(self.helpAction, SIGNAL("activated()"), self.helpWindow)
      
         # Add menu items for action
-        self.iface.addPluginToMenu("Track GPS location", self.actionOptions)
-        self.iface.addPluginToMenu("Track GPS location", self.actionStart)
-        self.iface.addPluginToMenu("Track GPS location", self.helpAction)
+        self.iface.addPluginToMenu("beeGPS", self.actionOptions)
+        self.iface.addPluginToMenu("beeGPS", self.actionStart)
+        self.iface.addPluginToMenu("beeGPS", self.helpAction)
         myPluginMenu = self.iface.pluginMenu()
         QObject.connect(myPluginMenu, SIGNAL("aboutToShow()"), self.updateTrackGPSMenu)
      
@@ -232,11 +235,11 @@ class trackGps:
     def updateTrackGPSMenu(self):
         
         if self.read.running:
-            self.iface.addPluginToMenu("Track GPS location", self.actionStop)
-            self.iface.removePluginMenu("Track GPS location", self.actionStart)
+            self.iface.addPluginToMenu("beeGPS", self.actionStop)
+            self.iface.removePluginMenu("beeGPS", self.actionStart)
         else:
-            self.iface.addPluginToMenu("Track GPS location", self.actionStart)
-            self.iface.removePluginMenu("Track GPS location", self.actionStop)
+            self.iface.addPluginToMenu("beeGPS", self.actionStart)
+            self.iface.removePluginMenu("beeGPS", self.actionStop)
     
     
     def startNewTrack(self):
@@ -253,16 +256,16 @@ class trackGps:
         self.rubberBand=QgsRubberBand(self.canvas) # start new rubber band
         if len(self.GPSPositions) > 0 and self.saveInSHAPEFile:
             self.GPSTracks.append(self.GPSPositions) # save GPSPositions to GPSTracks
-            self.GPSPositions = []
+            self.GPSPositions = [] #reset of array contenent the current position
         self.startGather() # open serial port and record new track
        
        
     def unload(self):
         # Remove the plugin menu item
         
-        self.iface.removePluginMenu("Track GPS location", self.actionStart)
-        self.iface.removePluginMenu("Track GPS location", self.actionStop)
-        self.iface.removePluginMenu("Track GPS location", self.actionOptions)
+        self.iface.removePluginMenu("beeGPS", self.actionStart)
+        self.iface.removePluginMenu("beeGPS", self.actionStop)
+        self.iface.removePluginMenu("beeGPS", self.actionOptions)
     
     
     def startGather(self):
@@ -286,15 +289,48 @@ class trackGps:
         self.read.exec_()
     
     
-    def setCoords (self, aGPSPosition):
+    def setCoords(self, aGPSPosition):
+    
+        boolDistance = True
+        boolTime = True
+    
+        #Controllo se è la prima acquisizione valutando la dimensione di GPSPosition[] a 0, in caso positivo acquisisco.
+        if len(self.GPSPositions) == 0:
+            self.GPSPositions.append(aGPSPosition)
+            
+        else:
+            #Metodo tresholdAcquisition() per l'acquisizione dei punti "live" in base alla soglia di distanza che ritorna 
+            #TRUE in caso la soglia sia stata superata, altrimenti FALSE
+            boolDistance = self.tresholdAcquisition(aGPSPosition)
+            
+        #Controllo che tresholdAcquisition() abbia ritornato TRUE altrimenti passo al punto successivo
+        if boolDistance == False:
+            return
+            
+        #Metodo timeIntervals() per l'acquisizione dei punti "live" in base alla soglia di tempo che ritorna TRUE in caso
+        #la soglia sia stata superata e acquisita, altrimenti FALSE
+        boolTime = self.timeIntervals(aGPSPosition)
+        
+        #Controllo che timeIntervals() abbia ritornato TRUE altrimenti passo al punto successivo
+        if boolTime == False:
+          return
+        
+        else:
+            self.GPSPositions.append(aGPSPosition)
 
         # display raw values
-        self.GPSPositions.append(aGPSPosition)
         self.dock.date.setText(aGPSPosition.theDateTime)
         self.dock.lat.setText(str(aGPSPosition.latitude) + ' ' + aGPSPosition.latitudeNS)
         self.dock.lon.setText(str(aGPSPosition.longitude) + ' ' + aGPSPosition.longitudeEW)
         self.dock.lineBearing.setText("%5.1i"%aGPSPosition.bearing)
         self.dock.lineSpeed.setText("%5.1i"%aGPSPosition.speed)
+        self.dock.lineHDOP.setText(str(aGPSPosition.hdop))
+        if aGPSPosition.fixQuality == 0:
+            self.dock.lineQuality.setText("Fix not available")
+        elif aGPSPosition.fixQuality == 1:
+            self.dock.lineQuality.setText("GPS fix")
+        else:
+            self.dock.lineQuality.setText("Differential GPS fix") 
         
         # display arrow on the map
         latitude = aGPSPosition.latitude if aGPSPosition.latitudeNS == 'N' else aGPSPosition.latitude * -1.0
@@ -315,20 +351,14 @@ class trackGps:
     
     
     def stopGather(self):
-        
         self.read.stop()
         self.positionMarker.hide()
-        if len(self.GPSPositions) > 0: 
+        if len(self.GPSPositions) > 0: # and self.saveInSHAPEFile:
             self.GPSTracks.append(self.GPSPositions) # save GPSPositions to GPSTracks
-            
+                                                                                                                                    
         # if len(self.GPSTracks) > 0 and self.saveInSHAPEFile:
         if self.saveInSHAPEFile: # this is temporary
             # option to save SHAPE file is on, prompt for filename and write the tracks to the file
-#            QMessageBox.information(self.iface.mainWindow(),"trackGPS","There are: " + str(len(self.GPSTracks)) + " GPS tracks in the current track")
-#            for j in range(len(self.GPSTracks)):
-#                QMessageBox.information(self.iface.mainWindow(),"trackGPS","In track #" + str(j) + " There are: " + str(len(self.GPSTracks[j])) + " GPS Positions")
-#                for i in range(len(self.GPSTracks[j])):
-#                    QMessageBox.information(self.iface.mainWindow(),"trackGPS","Position #" + str(i) + ": Latitude=" + str(self.GPSTracks[j][i].latitude))
             self.makeShapeFiles()
             
         if len(self.GPSTracks) > 0:
@@ -377,7 +407,7 @@ class trackGps:
         
     def connectionFailed(self, msg):
         
-        QMessageBox.warning(self.iface.mainWindow(),"trackGps", "Connection to GPSConnection failed\n%s"%(msg),QMessageBox.Ok,0)
+        QMessageBox.warning(self.iface.mainWindow(),"beeGPS", "Connection to GPSConnection failed\n%s"%(msg),QMessageBox.Ok,0)
         if self.read.session.connected: 
             self.read.stop()
         self.dock.btnStart.setText("Start")
@@ -416,37 +446,28 @@ class trackGps:
         myShapeFileNamesDlg = ShapeFileNames(myFilePath)
         isOK = myShapeFileNamesDlg.exec_()
         CRS = QgsCoordinateReferenceSystem()
-        crsIsOk = CRS.createFromEpsg(self.GPSTracks[0][0].datumEPSG)
+        crsIsOk = CRS.createFromOgcWmsCrs("EPSG:%d" % self.GPSTracks[0][0].datumEPSG)
         if not crsIsOk: 
             QMessageBox.warning(self.iface.mainWindow(),"trackGPS - makeShapeFiles","Error creating CRS from"+\
                                             " EPSG ID:" + str(self.GPSTracks[0][0].datumEPSG))
         if isOK and crsIsOk:
             if len(myShapeFileNamesDlg.lnePointsFileName.text()) > 0:
                 # set up the fields for the Points SHAPE file
-                latf = QgsField ("LATITUDE", float, "Real", 9, 6)
-                lonf = QgsField ("LONGITUDE", float, "Real", 10, 6)
-                nums = QgsField ("NUMOFSATS", int, "Integer", 2, 0)
-                hdop = QgsField ("HDOP", float, "Real", 4, 2)
-                theDateTime = QgsField ("DATETIME", string, "String", 19, 0)
-                fixType = QgsField ("FIXTYPE", string, "String", 1, 0)
+                box = QgsFields() 
+                box.append(QgsField("LATITUDE", QVariant.Double , "Real", 9, 6)) 
+                box.append(QgsField("LONGITUDE", QVariant.Double, "Real", 10, 6)) 
+                box.append(QgsField("NUMOFSATS", QVariant.Int, "Integer", 2, 0))
+                box.append(QgsField("HDOP", QVariant.Double, "Real", 4, 2))
+                box.append(QgsField("DATETIME", QVariant.String, "String", 19, 0)) 
+                box.append(QgsField("FIXTYPE", QVariant.String, "String", 1, 0))
 
-                bearing = QgsField ("BEARING", float, "Real", 6, 2)
-                speed = QgsField ("SPEED-KPH", float, "Real", 5, 1)
-                trackNumber = QgsField ("TRACKNUM", int, "Integer", 2, 0)
-                qFields = {}
-                qFields[0] = latf
-                qFields[1] = lonf
-                qFields[2] = nums
-                qFields[3] = hdop
-                qFields[4] = theDateTime
-                qFields[5] = fixType
-                qFields[6] = bearing
-                qFields[7] = speed
-                qFields[8] = trackNumber
+                box.append(QgsField("BEARING", QVariant.Double, "Real", 6, 2))
+                box.append(QgsField("SPEED-KPH", QVariant.Double, "Real", 5, 1)) 
+                box.append(QgsField("TRACKNUM", QVariant.Int, "Integer", 2, 0))
                 
                 # set up the CRS
                 # open the points SHAPE file
-                pointsFile, fileOK = self.createSHAPEfile(myShapeFileNamesDlg.lnePointsFileName.text(),qFields,QGis.WKBPoint,CRS)
+                pointsFile, fileOK = self.createSHAPEfile(myShapeFileNamesDlg.lnePointsFileName.text(),box,QGis.WKBPoint,CRS)
                 if fileOK:
                     for j in range(len(self.GPSTracks)):
                         for i in range(len(self.GPSTracks[j])):
@@ -458,29 +479,27 @@ class trackGps:
                             if self.GPSTracks[j][i].longitudeEW == 'W': 
                                 longitude = -longitude
                             theFeature.setGeometry(QgsGeometry.fromPoint(QgsPoint(longitude,latitude)))
-                            theFeature.addAttribute(0, latitude)
-                            theFeature.addAttribute(1, longitude)
-                            theFeature.addAttribute(2, self.GPSTracks[j][i].numSatellites)
-                            theFeature.addAttribute(3, self.GPSTracks[j][i].hdop)
-                            theFeature.addAttribute(4, self.GPSTracks[j][i].theDateTime)
-                            theFeature.addAttribute(5, self.GPSTracks[j][i].fixQuality)
-                            theFeature.addAttribute(6, self.GPSTracks[j][i].bearing)
-                            theFeature.addAttribute(7, self.GPSTracks[j][i].speed)
-                            theFeature.addAttribute(8, j+1)
+                            theFeature.setAttributes([0, latitude])
+                            theFeature.setAttributes([1, longitude])
+                            theFeature.setAttributes([2, self.GPSTracks[j][i].numSatellites])
+                            theFeature.setAttributes([3, self.GPSTracks[j][i].hdop])
+                            theFeature.setAttributes([4, self.GPSTracks[j][i].theDateTime])
+                            theFeature.setAttributes([5, self.GPSTracks[j][i].fixQuality])
+                            theFeature.setAttributes([6, self.GPSTracks[j][i].bearing])
+                            theFeature.setAttributes([7, self.GPSTracks[j][i].speed])
+                            theFeature.setAttributes([8, j+1])
                             pointsFile.addFeature(theFeature)
                             
                     del pointsFile # del file object to force a flush and close
                     
             if len(myShapeFileNamesDlg.lneLinesFileName.text()) > 0:
                 # set up the fields for the Lines SHAPE file
-                startDateTime = QgsField ("SDATETIME", string, "String", 19, 0)
-                endDateTime = QgsField ("EDATETIME", string, "String", 19, 0)
-                trackNumber = QgsField ("TRACKNUM", int, "Integer", 2, 0)
-                qFields = {}
-                qFields[0] = startDateTime
-                qFields[1] = endDateTime
-                qFields[2] = trackNumber
-                linesFile, fileOK = self.createSHAPEfile(myShapeFileNamesDlg.lneLinesFileName.text(),qFields,QGis.WKBLineString,CRS)
+                lines_box = QgsFields()
+                lines_box.append(QgsField("SDATETIME", QVariant.String, "String", 19, 0))
+                lines_box.append(QgsField("EDATETIME", QVariant.String, "String", 19, 0))
+                lines_box.append(QgsField("TRACKNUM", QVariant.Int, "Integer", 2, 0))
+                
+                linesFile, fileOK = self.createSHAPEfile(myShapeFileNamesDlg.lneLinesFileName.text(),lines_box,QGis.WKBLineString,CRS)
                 if fileOK:
                     for j in range(len(self.GPSTracks)):
                         theFeature = QgsFeature()
@@ -495,9 +514,9 @@ class trackGps:
                             pointsList.append(QgsPoint(longitude,latitude))
                             
                         theFeature.setGeometry(QgsGeometry.fromPolyline(pointsList))
-                        theFeature.addAttribute(0, self.GPSTracks[j][0].theDateTime)
-                        theFeature.addAttribute(1, self.GPSTracks[j][len(self.GPSTracks[j])-1].theDateTime)
-                        theFeature.addAttribute(2, j+1)
+                        theFeature.setAttributes([0, self.GPSTracks[j][0].theDateTime])
+                        theFeature.setAttributes([1, self.GPSTracks[j][len(self.GPSTracks[j])-1].theDateTime])
+                        theFeature.setAttributes([2, j+1])
                         linesFile.addFeature(theFeature)
                         
                     del linesFile # del file object to force a flush and close
@@ -537,5 +556,90 @@ class trackGps:
                 QMessageBox.warning(self.iface.mainWindow(),"trackGPS - makeShapeFiles","Error creating " + typeName + " SHAPE file" +\
                                             " ERROR=\'UNKOWN ERROR\' saving " + typeName + " is aborted")
         return SHAPEfile,status
-
-
+        
+        
+    #Metodo per l'acquisizione tramite soglia di distanza
+    def tresholdAcquisition(self, aGPSPosition):
+    
+        #Costanti per il calcolo della distanza
+        R_Terra = 6372.795477598
+        acquisito = False
+        
+        
+        #Acquisisco la soglia di distanza, da input e la converto in float
+        soglia = self.dock.lineTreshold.text()
+        if not soglia.isnumeric():
+            self.read.stop()
+            self.positionMarker.hide()
+            self.dock.btnStart.setText("Start")
+            self.dock.gpsInformation.setText("Gets GPS Receiver Information")
+            QMessageBox.warning(self.iface.mainWindow(),"ATENZIONE","Inserire solo valori numerici nella soglia di distanza.")
+        else:
+            soglia = float(soglia)
+            soglia = soglia / 1000
+    
+        #Conversione dei gradi in radianti
+        lat_alfa = math.radians(aGPSPosition.latitude)
+        lat_beta = math.radians(self.GPSPositions[-1].latitude)
+        lon_alfa = math.radians(aGPSPosition.longitude)
+        lon_beta = math.radians(self.GPSPositions[-1].longitude)
+        
+        #Calcolo la differenza di lat e lon
+        dLat = lat_alfa - lat_beta
+        dLon = lon_alfa - lon_beta
+            
+         
+        a = math.sin(dLat/2)*math.sin(dLat/2)+math.sin(dLon/2)*math.sin(dLon/2)* math.cos(lat_alfa) * math.cos(lat_beta)
+            
+        #Calcolo il terzo lato del triangolo sferico
+        c = 2*math.atan2(math.sqrt(a),math.sqrt(1-a))
+           
+        distanza = c * R_Terra
+           
+        #Controllo con la soglia di distanza e eventualmente acquisisco
+        if distanza > soglia:
+            acquisito = True    
+                    
+        return acquisito
+        
+    
+    #Metodo timeIntervals() per il controllo della soglia temporale
+    def timeIntervals(self, aGPSPosition):
+    
+        #Variabile booleana di ritorno
+        acquisito = False
+        
+        #Stringa per il formato della data 
+        formato = '%Y-%m-%d %H:%M:%S'
+        
+        #Metto le due date, quella dell'ultima acquisizione e quella da valutare in due stringhe
+        dataA = aGPSPosition.theDateTime
+        dataB = self.GPSPositions[-1].theDateTime
+        
+        #Tramite il metodo time.strptime() realizziamo due strutte tempo per le due date
+        struct_A = time.strptime(dataA,formato)
+        struct_B = time.strptime(dataB,formato)
+        
+        #Otteniamo i valori di confronto
+        confrontoA = datetime.datetime.fromtimestamp(time.mktime(struct_A))
+        confrontoB = datetime.datetime.fromtimestamp(time.mktime(struct_B))
+        
+        #Otteniamo la differenza
+        differenza = (confrontoA - confrontoB).seconds
+        
+        #Acquisisco la soglia di distanza temporale e gestisco eventualmente l'inserimento di valori non numerici
+        intervalli = self.dock.lineTimeIntervals.text()
+        if not intervalli.isnumeric():
+            self.read.stop()
+            self.positionMarker.hide()
+            self.dock.btnStart.setText("Start")
+            self.dock.gpsInformation.setText("Gets GPS Receiver Information")
+            QMessageBox.warning(self.iface.mainWindow(),"ATENZIONE","Inserire solo valori numerici nella soglia temporale.")
+        else:
+            intervalli = float(intervalli)
+        
+        #Controllo se la differenza e maggiore della soglia
+        if differenza > intervalli:
+          acquisito = True
+          
+        return acquisito 

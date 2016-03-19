@@ -191,7 +191,7 @@ class GPSConnection(object):
             self.portName = the name of the connected serial port (i.e. COM1)            
         """
         try:
-            self.serialPort = serial.Serial(port, baudRate, timeout=.25, parity=serial.PARITY_NONE)
+            self.serialPort = serial.Serial(port, baudRate, timeout= .25, parity=serial.PARITY_NONE)
             self.serialPort.open()
             
             for i in range(10): # look for a NMEA message string from the serial port
@@ -277,7 +277,7 @@ class GPSConnection(object):
                     atime = time.localtime()
                     thePosition.theDateTime = str(atime[0]) + "-" + str(atime[1]) + "-" + str(atime[2]) + " " +\
                         str(atime[3]) + ":" + str(atime[4]) + ":" + str(atime[5])
-                    # thePosition.timeUTC = parts[1][:2] + ':' + parts[1][2:4] + ':' + parts[1][4:]
+                    #thePosition.timeUTC = parts[1][:2] + ':' + parts[1][2:4] + ':' + parts[1][4:]
                     if hasBearing and hasSatellites: 
                         break
                 except Exception, e:
